@@ -28,3 +28,9 @@ python3 -m http.server 8000
 - `index.html` : structure de la page.
 - `style.css` : tapis vert, bouton, panneau de résultat, historique.
 - `roulette.js` : dessin de la roue, animation, tirage, affichage du résultat.
+
+## Déploiement GitHub Pages
+
+Le workflow `.github/workflows/pages.yml` publie le site à chaque push.
+Dans les réglages du dépôt, onglet **Pages**, choisir la source **GitHub Actions**.
+Le site est alors servi à l'adresse `https://aubelo-34.github.io/casino/`.
