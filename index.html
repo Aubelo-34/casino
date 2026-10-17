@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Roulette Casino</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="table">
+    <header class="header">
+      <h1>Roulette</h1>
+      <p class="subtitle">Roue américaine · 38 cases (0, 00, 1 à 36)</p>
+    </header>
+
+    <section class="wheel-area">
+      <canvas id="wheel" width="720" height="720" aria-label="Roue de la roulette"></canvas>
+      <div id="result" class="result" aria-live="polite">
+        <span class="result-label">Appuyez sur « Lancer » pour jouer</span>
+      </div>
+    </section>
+
+    <section class="controls">
+      <button id="spin" class="btn-spin" type="button">Lancer la roulette</button>
+      <label class="toggle">
+        <input id="sound" type="checkbox" checked>
+        <span>Son</span>
+      </label>
+    </section>
+
+    <section class="history">
+      <h2>Derniers résultats</h2>
+      <ol id="history" class="history-list" aria-live="polite"></ol>
+    </section>
+  </main>
+
+  <script src="roulette.js"></script>
+</body>
+</html>
