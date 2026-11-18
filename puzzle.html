@@ -111,8 +111,8 @@ button:focus-visible,label:focus-visible{outline:3px solid var(--gold-hi);outlin
 const $=q=>document.querySelector(q);
 const cv=$('#c'),ctx=cv.getContext('2d');
 let dpr=1,cw=0,ch=0,sc=1,ox=0,oy=0;
-let G=null,src=null,N=100,dirty=true,drag=null,ghost=false,parts=[],AC=null,sound=true;
-const LEVELS=[[48,'Mise de départ','#1d4ed8'],[100,'Table classique','#c8102e'],[150,'Grosse mise','#151515'],[250,'High roller','#7c3aed']];
+let G=null,src=null,N=32,dirty=true,drag=null,ghost=false,parts=[],AC=null,sound=true;
+const LEVELS=[[24,'Mise de départ','#1d4ed8'],[32,'Table classique','#c8102e'],[48,'Grosse mise','#151515'],[100,'High roller','#7c3aed']];
 let bank=500;try{const b=localStorage.getItem('jp-bank');if(b!==null)bank=+b}catch(e){}
 function saveBank(){try{localStorage.setItem('jp-bank',bank)}catch(e){}}
 
@@ -164,46 +164,46 @@ async function makeDefault(){
 }
 
 /* ---------- formes des pièces ---------- */
-function edge(P,x0,y0,x1,y1,t){
+function edge(P,x0,y0,x1,y1,t,m){
   if(!t){P.lineTo(x1,y1);return}
-  const dx=x1-x0,dy=y1-y0,nx=dy,ny=-dx,p=(a,b)=>[x0+dx*a+nx*b*t,y0+dy*a+ny*b*t];
+  const dx=x1-x0,dy=y1-y0,L=Math.hypot(dx,dy),k=m/L,nx=dy*k,ny=-dx*k,p=(a,b)=>{a=a===1?1:.5+(a-.5)*k;return[x0+dx*a+nx*b*t,y0+dy*a+ny*b*t]};
   const B=(a,b,c,d,e,f)=>P.bezierCurveTo(...p(a,b),...p(c,d),...p(e,f));
   P.lineTo(...p(.35,0));B(.40,0,.44,.08,.38,.14);B(.32,.22,.40,.29,.50,.29);B(.60,.29,.68,.22,.62,.14);B(.56,.08,.60,0,.65,0);P.lineTo(x1,y1);
 }
-function piecePath(s,e){const P=new Path2D(),pt=[[0,0],[s,0],[s,s],[0,s]];P.moveTo(0,0);for(let k=0;k<4;k++){const a=pt[k],b=pt[(k+1)%4];edge(P,a[0],a[1],b[0],b[1],e[k])}P.closePath();return P}
+function piecePath(w,h,e){const m=Math.min(w,h),P=new Path2D(),pt=[[0,0],[w,0],[w,h],[0,h]];P.moveTo(0,0);for(let k=0;k<4;k++){const a=pt[k],b=pt[(k+1)%4];edge(P,a[0],a[1],b[0],b[1],e[k],m)}P.closePath();return P}
 function renderPiece(p){
-  const {s,pad,q}=G,w=s+2*pad,c=document.createElement('canvas');c.width=c.height=Math.ceil(w*q);const x=c.getContext('2d');
+  const {s,sw,sh,pad,q}=G,c=document.createElement('canvas');c.width=Math.ceil((sw+2*pad)*q);c.height=Math.ceil((sh+2*pad)*q);const x=c.getContext('2d');
   x.setTransform(q,0,0,q,pad*q,pad*q);
   x.shadowColor='rgba(0,0,0,.55)';x.shadowBlur=s*.08*q;x.shadowOffsetY=s*.04*q;x.fillStyle='#000';x.fill(p.path);x.shadowColor='transparent';
-  x.save();x.clip(p.path);x.drawImage(G.bc,-p.c*s,-p.r*s,G.Wb,G.Hb);
+  x.save();x.clip(p.path);x.drawImage(G.bc,-p.c*sw,-p.r*sh,G.Wb,G.Hb);
   x.lineWidth=s*.05;x.translate(s*.016,s*.016);x.strokeStyle='rgba(255,255,255,.3)';x.stroke(p.path);x.translate(-s*.032,-s*.032);x.strokeStyle='rgba(0,0,0,.35)';x.stroke(p.path);x.restore();
   x.lineWidth=s*.014;x.strokeStyle='rgba(0,0,0,.55)';x.stroke(p.path);p.cv=c;
 }
 
 /* ---------- partie ---------- */
 function pickZone(){const z=G.zones,tot=z.reduce((a,b)=>a+b[2]*b[3],0);let r=Math.random()*tot;for(const k of z){r-=k[2]*k[3];if(r<=0)return k}return z[0]}
-function spot(){const z=pickZone(),s=G.s;return[z[0]+Math.random()*Math.max(1,z[2]-s),z[1]+Math.random()*Math.max(1,z[3]-s)]}
+function spot(){const z=pickZone();return[z[0]+Math.random()*Math.max(1,z[2]-G.sw),z[1]+Math.random()*Math.max(1,z[3]-G.sh)]}
 
 function start(){
   const img=src,ia=img.width/img.height,A=Math.min(1.7,Math.max(.6,ia));
-  const cols=Math.max(3,Math.round(Math.sqrt(N*A))),rows=Math.max(3,Math.round(N/cols)),n=cols*rows;
-  const portrait=innerHeight>innerWidth*1.05;
-  const s=portrait?600/cols:640/rows,Wb=cols*s,Hb=rows*s,gap=s*.4,need=n*(s*1.25)**2*.7;
+  let cols=0,rows=0,bd=1e9;for(let c=2;c<=N;c++){if(N%c)continue;const r=N/c,d=Math.abs(Math.log((A/c*r)));if(d<bd){bd=d;cols=c;rows=r}}
+  const n=cols*rows,portrait=innerHeight>innerWidth*1.05;
+  const Wb=portrait?600:640*A,Hb=Wb/A,sw=Wb/cols,sh=Hb/rows,s=Math.min(sw,sh),gap=s*.4,need=n*sw*sh*1.56*.7;
   let W,H,bx,by,zones;
   if(portrait){const m=s*.5;W=Wb+2*m;const sc0=(innerWidth-12)/W,Hav=(innerHeight-74)/sc0;const B=Math.max(s*3,need/W,Hav-(m+Hb+gap+m*.4));bx=m;by=m;H=m+Hb+gap+B+m*.4;zones=[[m*.2,by+Hb+gap,W-m*.4,B]]}
   else{const top=s*.6;H=Hb+2*top;const side=Math.max(s*2.6,need/(2*H));W=Wb+2*side;bx=side;by=top;const zw=side-gap-s*.2;zones=[[s*.2,top*.4,zw,H-top*.8],[side+Wb+gap,top*.4,zw,H-top*.8]]}
-  G={cols,rows,n,s,pad:s*.36,Wb,Hb,W,H,bx,by,zones,pieces:[],order:[],t0:0,combo:0,lastSnap:0,maxCombo:1,won:false,anim:null,gain:0,ghostUses:0};
+  G={cols,rows,n,s,sw,sh,pad:s*.36,Wb,Hb,W,H,bx,by,zones,pieces:[],order:[],t0:0,combo:0,lastSnap:0,maxCombo:1,won:false,anim:null,gain:0,ghostUses:0};
   $('#home').hidden=true;$('#win').hidden=true;$('#hud').hidden=false;ghost=false;$('#bGhost').classList.remove('on');
   fit();G.q=Math.min(3,Math.max(1,sc*dpr));
   const bc=document.createElement('canvas');bc.width=Math.round(Wb*G.q);bc.height=Math.round(Hb*G.q);
-  const Rt=cols/rows;let sw=img.width,sh=img.height,sx=0,sy=0;if(sw/sh>Rt){sw=sh*Rt;sx=(img.width-sw)/2}else{sh=sw/Rt;sy=(img.height-sh)/2}
-  bc.getContext('2d').drawImage(img,sx,sy,sw,sh,0,0,bc.width,bc.height);G.bc=bc;
+  const Rt=A;let iw=img.width,ih=img.height,sx=0,sy=0;if(iw/ih>Rt){iw=ih*Rt;sx=(img.width-iw)/2}else{ih=iw/Rt;sy=(img.height-ih)/2}
+  bc.getContext('2d').drawImage(img,sx,sy,iw,ih,0,0,bc.width,bc.height);G.bc=bc;
   const rnd=()=>Math.random()<.5?1:-1,h=[...Array(rows)].map(()=>[...Array(cols)].map(rnd)),v=[...Array(rows)].map(()=>[...Array(cols)].map(rnd));
   let id=0;
   for(let r=0;r<rows;r++)for(let c=0;c<cols;c++){
     const e=[r?-h[r-1][c]:0,c<cols-1?v[r][c]:0,r<rows-1?h[r][c]:0,c?-v[r][c-1]:0];
-    const p={r,c,g:id++,tx:bx+c*s,ty:by+r*s,locked:false,path:piecePath(s,e)};renderPiece(p);
-    const [ex,ey]=spot();p.ex=ex;p.ey=ey;p.fx=p.x=bx+Wb/2-s/2;p.fy=p.y=by+Hb/2-s/2;G.pieces.push(p)}
+    const p={r,c,g:id++,tx:bx+c*sw,ty:by+r*sh,locked:false,path:piecePath(sw,sh,e)};renderPiece(p);
+    const [ex,ey]=spot();p.ex=ex;p.ey=ey;p.fx=p.x=bx+Wb/2-sw/2;p.fy=p.y=by+Hb/2-sh/2;G.pieces.push(p)}
   G.order=G.pieces.slice().sort(()=>Math.random()-.5);
   const step=Math.min(14,1100/n);G.order.forEach((p,i)=>p.delay=i*step);
   G.anim={t0:performance.now(),end:n*step+450};
@@ -216,7 +216,7 @@ function trySnap(gid){
   for(const p of grp){if(Math.hypot(p.x-p.tx,p.y-p.ty)<T){const dx=p.tx-p.x,dy=p.ty-p.y;grp.forEach(q=>{q.x+=dx;q.y+=dy;q.locked=true});G.snapG=gid;return'board'}}
   for(const p of grp)for(const[dr,dc]of[[0,1],[1,0],[0,-1],[-1,0]]){
     const n=G.grid(p.r+dr,p.c+dc);if(!n||n.g===gid)continue;
-    const ex=n.x-(p.x+dc*s),ey=n.y-(p.y+dr*s);
+    const ex=n.x-(p.x+dc*G.sw),ey=n.y-(p.y+dr*G.sh);
     if(Math.hypot(ex,ey)<T){
       if(n.locked){grp.forEach(q=>{q.x+=ex;q.y+=ey;q.locked=true});G.snapG=gid;return'board'}
       grp.forEach(q=>{q.x+=ex;q.y+=ey;q.g=n.g});G.snapG=n.g;return trySnap(n.g)||'merge'}}
@@ -228,7 +228,7 @@ function onSnap(res,gid){
   const now=performance.now();G.combo=(now-G.lastSnap<6000)?G.combo+1:1;G.lastSnap=now;G.maxCombo=Math.max(G.maxCombo,G.combo);
   const gain=5*G.combo;G.gain+=gain;
   const grp=G.pieces.filter(p=>p.g===gid);
-  let cx=0,cy=0;grp.forEach(p=>{cx+=p.x;cy+=p.y});cx=cx/grp.length+G.s/2;cy=cy/grp.length+G.s/2;burst(cx,cy,res==='board'?22:12);
+  let cx=0,cy=0;grp.forEach(p=>{cx+=p.x;cy+=p.y});cx=cx/grp.length+G.sw/2;cy=cy/grp.length+G.sh/2;burst(cx,cy,res==='board'?22:12);
   sfx(res);if(G.combo>=2)flash(`COMBO ×${G.combo}  +${gain}`);
   if(res==='board')sortOrder();updHud();
   if(G.pieces.every(p=>p.locked))setTimeout(win,450);
@@ -239,7 +239,7 @@ function toW(e){return[(e.clientX-ox)/sc,(e.clientY-oy)/sc]}
 function hit(wx,wy){
   ctx.setTransform(1,0,0,1,0,0);
   for(let k=G.order.length-1;k>=0;k--){const p=G.order[k];if(!p.locked&&ctx.isPointInPath(p.path,wx-p.x,wy-p.y))return p}
-  let best=null,bd=G.s*.75;for(let k=G.order.length-1;k>=0;k--){const p=G.order[k];if(p.locked)continue;const d=Math.hypot(wx-p.x-G.s/2,wy-p.y-G.s/2);if(d<bd){bd=d;best=p}}
+  let best=null,bd=G.s*.75;for(let k=G.order.length-1;k>=0;k--){const p=G.order[k];if(p.locked)continue;const d=Math.hypot(wx-p.x-G.sw/2,wy-p.y-G.sh/2);if(d<bd){bd=d;best=p}}
   return best;
 }
 cv.addEventListener('pointerdown',e=>{
@@ -264,14 +264,14 @@ $('#bHome').onclick=()=>{G=null;$('#hud').hidden=true;$('#home').hidden=false;re
 function burst(x,y,n){const cols=['#ffe08a','#e3b94d','#fff3c4','#c8102e'];for(let i=0;i<n;i++){const a=Math.random()*7,v=G.s*(.02+Math.random()*.05);parts.push({x,y,vx:Math.cos(a)*v,vy:Math.sin(a)*v-G.s*.02,r:G.s*(.03+Math.random()*.04),l:1,c:cols[i%4]})}}
 function draw(){
   dirty=false;ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,cw,ch);if(!G)return;
-  ctx.translate(ox,oy);ctx.scale(sc,sc);const{bx,by,Wb,Hb,s,pad}=G;
+  ctx.translate(ox,oy);ctx.scale(sc,sc);const{bx,by,Wb,Hb,s,sw,sh,pad}=G;
   ctx.fillStyle='rgba(0,0,0,.34)';ctx.beginPath();ctx.roundRect(bx-s*.12,by-s*.12,Wb+s*.24,Hb+s*.24,s*.15);ctx.fill();
   ctx.lineWidth=s*.07;ctx.strokeStyle='#e3b94d';ctx.stroke();
   ctx.lineWidth=s*.02;ctx.strokeStyle='rgba(255,243,196,.5)';ctx.beginPath();ctx.roundRect(bx-s*.2,by-s*.2,Wb+s*.4,Hb+s*.4,s*.2);ctx.stroke();
   ctx.strokeStyle='rgba(227,185,77,.13)';ctx.lineWidth=1/sc;ctx.beginPath();
-  for(let c=1;c<G.cols;c++){ctx.moveTo(bx+c*s,by);ctx.lineTo(bx+c*s,by+Hb)}for(let r=1;r<G.rows;r++){ctx.moveTo(bx,by+r*s);ctx.lineTo(bx+Wb,by+r*s)}ctx.stroke();
+  for(let c=1;c<G.cols;c++){ctx.moveTo(bx+c*sw,by);ctx.lineTo(bx+c*sw,by+Hb)}for(let r=1;r<G.rows;r++){ctx.moveTo(bx,by+r*sh);ctx.lineTo(bx+Wb,by+r*sh)}ctx.stroke();
   if(ghost){ctx.globalAlpha=.3;ctx.drawImage(G.bc,bx,by,Wb,Hb);ctx.globalAlpha=1}
-  const w=s+2*pad;for(const p of G.order)ctx.drawImage(p.cv,p.x-pad,p.y-pad,w,w);
+  for(const p of G.order)ctx.drawImage(p.cv,p.x-pad,p.y-pad,sw+2*pad,sh+2*pad);
   for(const q of parts){ctx.globalAlpha=Math.max(0,q.l);ctx.fillStyle=q.c;ctx.beginPath();ctx.arc(q.x,q.y,q.r,0,7);ctx.fill()}ctx.globalAlpha=1;
 }
 function loop(now){
@@ -290,7 +290,7 @@ setInterval(updHud,250);
 function flash(t){const f=$('#flash');f.textContent=t;f.classList.remove('go');void f.offsetWidth;f.classList.add('go')}
 function win(){
   if(G.won)return;G.won=true;G.end=performance.now();ghost=false;$('#bGhost').classList.remove('on');dirty=true;
-  const sec=(G.end-G.t0)/1000,per=sec/G.n;let stars=per<4?3:per<8?2:1;if(G.ghostUses>3)stars=Math.max(1,stars-1);
+  const sec=(G.end-G.t0)/1000,per=sec/G.n;let stars=per<5?3:per<10?2:1;if(G.ghostUses>3)stars=Math.max(1,stars-1);
   const reward=Math.round(G.n*[1,1.5,2.5][stars-1])+G.gain;bank+=reward;saveBank();
   $('#wStars').innerHTML='★'.repeat(stars)+'<span class="off">'+'★'.repeat(3-stars)+'</span>';
   $('#wTime').textContent=fmt(G.end-G.t0);$('#wCombo').textContent='×'+G.maxCombo;$('#wGain').textContent='+'+reward;

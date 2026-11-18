@@ -37,6 +37,6 @@ Le site est alors servi à l'adresse `https://aubelo-34.github.io/casino/`.
 
 ## Jackpot Puzzle (prototype)
 
-`puzzle.html` : puzzle photo sur le thème du casino. On choisit sa photo et sa mise (48 à 250 pièces),
+`puzzle.html` : puzzle photo sur le thème du casino. On choisit sa photo et sa mise (24, 32, 48 ou 100 pièces),
 les pièces sont distribuées autour d'un plateau doré, puis on les assemble par glisser-déposer.
 Les pièces s'aimantent entre elles et au plateau, avec combos, jetons, étoiles et écran « Jackpot ».
